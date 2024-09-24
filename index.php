@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: Simple Circulation Notification using Whatsapp
+ * Plugin Name: Circulation Notification using Whatsapp
  * Plugin URI:
- * Description: Using API provided by WHACENTER (https://whacenter.com/). 
+ * Description: Using API provided by Fonnte and Whacenter. 
  * Version: 1.0.0
  * Author: Hendro Wicaksono
  * Author URI: https://github.com/hendrowicaksono
@@ -36,20 +36,36 @@ $vkid = new Valitron\Validator($_GET);
 $vkid->rule('required', 'kirim_id');
 $vkid->rule('integer', 'kirim_id');
 if($vkid->validate()) {
+    global $ccnw;
     $s_get_log = 'SELECT * FROM circ_notif_wa_log WHERE id='.$_GET['kirim_id'];
-    $q_get_log = $conn->query($s_get_log);
+    $q_get_log = $ccnw['conn']->query($s_get_log);
     if ($q_get_log->rowCount() > 0) {
         $d_get_log = $q_get_log->fetchAll();
-
-        $ccnw = array ();
-        $ccnw['device_id'] = $device_id;     
-
         $data = array (
             'device_id' => $ccnw['device_id'],
             'number' => $d_get_log[0]['member_phone'],
             'message' => $d_get_log[0]['message']
         );
-        \Cncw\Notification::sendToWhacenter($data);
+        if ($ccnw['mode'] == 'default') {
+            $sender = new \Cncw\Notification($ccnw);
+            if ($ccnw['provider'] == 'whacenter') {
+                $sender->sendToWhacenter($data);
+            } elseif ($ccnw['provider'] == 'fonnte') {
+                $sender->sendToFonnte($data);
+            }
+        } elseif ($ccnw['mode'] == 'gearman') {
+            $client= new GearmanClient();
+            $client->addServer($ccnw['gearman_host'], $ccnw['gearman_port']);
+            print $client->doNormal("send_notif_wa", urlencode(serialize($data)));
+        } elseif ($ccnw['mode'] == 'nsq') {
+            $client = new \GuzzleHttp\Client();
+            $response = $client->request('POST', $ccnw['nsq_url'], [
+                'body' => urlencode(serialize($data))
+            ]);
+        } else {
+            #die("WRONG MODE");
+        }
+
 ?>
         <div class="alert alert-primary alert-dismissible fade show" role="alert">
             <strong>Data terkirim!</strong>

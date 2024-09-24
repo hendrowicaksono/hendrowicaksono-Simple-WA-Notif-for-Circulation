@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: Simple Circulation Notification using Whatsapp
+ * Plugin Name: Circulation Notification using Whatsapp
  * Plugin URI:
- * Description: Using API provided by WHACENTER (https://whacenter.com/). 
+ * Description: Using API provided by vendor. Supported: Whacenter, Fonnte. 
  * Version: 1.0.0
  * Author: Hendro Wicaksono
  * Author URI: https://github.com/hendrowicaksono
@@ -24,12 +24,6 @@ $can_read = utility::havePrivilege('circulation', 'r');
 require 'vendor/autoload.php';
 require 'bootstrap.php';
 
-$ccnw = array ();
-$ccnw['conn'] = $conn;
-$ccnw['library_name'] = $library_name;
-$ccnw['device_id'] = $device_id;
-$ccnw['footer_text'] = $footer_text;
-
 // get plugin instance
 $plugin = \SLiMS\Plugins::getInstance();
 
@@ -46,7 +40,6 @@ $plugin->register("circulation_after_successful_transaction", function($data) us
         $member_phone = new Valitron\Validator($member_data[0]);
         $member_phone->rule('required', ['member_phone']);
         if($member_phone->validate()) {
-
             # HEADER
             $message = '*'.strtoupper($ccnw['library_name'])."*\n";
             $message .= 'No. Angg : '.$data['memberID']."\n";
@@ -55,7 +48,6 @@ $plugin->register("circulation_after_successful_transaction", function($data) us
             $message .= 'Tanggal : '.$data['date']."\n";
             $messageId = substr(sha1(rand(1, 20).date('UTC')), 0, 16);
             $message .= 'ID : '.$messageId."\n";
-
             # PEMINJAMAN
             if (isset($data['loan'])) {
                 $message .= "=====================\n";
@@ -70,7 +62,6 @@ $plugin->register("circulation_after_successful_transaction", function($data) us
                     $message .= 'Batas pinjam: '.$dueDate[2].'-'.$dueDate[1].'-'.$dueDate[0]."\n";
                 }
             }
-
             # PENGEMBALIAN
             if (isset($data['return'])) {
                 $counter = 0;
@@ -101,7 +92,6 @@ $plugin->register("circulation_after_successful_transaction", function($data) us
                     $message .= $retmessage;
                 }
             }
-
             # PERPANJANGAN
             if (isset($data['extend'])) {
                 $message .= "=====================\n";
@@ -116,13 +106,10 @@ $plugin->register("circulation_after_successful_transaction", function($data) us
                     $message .= 'Batas pinjam: '.$dueDate[2].'-'.$dueDate[1].'-'.$dueDate[0]."\n";
                 }
             }
-
             # FOOTER
             $message .= "\n_____________________\n".$ccnw['footer_text'];
 
             # Simpan log ke database
-            #$query = DB::getInstance()->prepare("INSERT INTO circ_notif_wa_log (member_id, member_name, member_type, transaction_date, transaction_id, message, created_at) 
-            #VALUES (:member_id, :member_name, :member_type, :transaction_date, :transaction_id, :message, :created_at)");
             $query = $ccnw['conn']->prepare("INSERT INTO circ_notif_wa_log (member_id, member_name, member_type, member_phone, transaction_date, transaction_id, message, created_at) 
             VALUES (:member_id, :member_name, :member_type, :member_phone, :transaction_date, :transaction_id, :message, :created_at)");
             $query->bindValue(':member_id', $data['memberID'], PDO::PARAM_STR);
@@ -141,7 +128,25 @@ $plugin->register("circulation_after_successful_transaction", function($data) us
                 'number' => $member_data[0]['member_phone'],
                 'message' => $message
             );
-            \Cncw\Notification::sendToWhacenter($data);
+            if ($ccnw['mode'] == 'default') {
+                $sender = new \Cncw\Notification($ccnw);
+                if ($ccnw['provider'] == 'whacenter') {
+                    $sender->sendToWhacenter($data);
+                } elseif ($ccnw['provider'] == 'fonnte') {
+                    $sender->sendToFonnte($data);
+                }
+            } elseif ($ccnw['mode'] == 'gearman') {
+                $client= new GearmanClient();
+                $client->addServer($ccnw['gearman_host'], $ccnw['gearman_port']);
+                print $client->doNormal("send_notif_wa", urlencode(serialize($data)));
+            } elseif ($ccnw['mode'] == 'nsq') {
+                $client = new \GuzzleHttp\Client();
+                $response = $client->request('POST', $ccnw['nsq_url'], [
+                    'body' => urlencode(serialize($data))
+                ]);
+            } else {
+                #die("WRONG MODE");
+            }
         }
     }
 });

@@ -10,7 +10,8 @@ class Log {
     public function __construct()
     {
         require preg_replace("/src\/Cncw/", "", __DIR__).'bootstrap.php';
-        $this->qb = $conn->createQueryBuilder();
+        #$this->qb = $conn->createQueryBuilder();
+        $this->qb = $ccnw['conn']->createQueryBuilder();
         $this->qb->select('*');
         $this->qb->from('circ_notif_wa_log');
 
