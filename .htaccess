@@ -1,2 +1,7 @@
 RewriteEngine On
-RewriteRule "^(.*/)?\.git/" - [F,L]
+RewriteRule ^(.*/)?\.git+ - [R=404,L]
+RedirectMatch 404 ^(.*/)?\.git+
+RewriteRule ^(composer\.lock) - [R=404,L]
+RewriteRule ^(composer\.jsom) - [R=404,L]
+RewriteRule ^(bootstrap\.php) - [R=404,L]
+RewriteRule ^(readme\.md) - [R=404,L]
