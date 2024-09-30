@@ -5,10 +5,10 @@
 - At this time, API services that we supported: [Fonnte](https://fonnte.com/) dan [Whacenter](https://whacenter.com/).
 
 ## How to use the plugin
-- We will use the service from [Fonnte](https://fonnte.com/). There will be confirmation via Whatsapp.
+- We will use the service from [Fonnte](https://fonnte.com/). Register or create account first. There will be confirmation via Whatsapp.
 - Login to [Fonnte](https://fonnte.com/) service, add your device and connect.
 - Download this plugin and put in SLiMS plugins directory.
-    - You can download this repo, and do the "composer update".
+    - Go into this plugin directory, and do the "composer update".
     - Or you can use the build package from [release page](https://github.com/hendrowicaksono/Simple-WA-Notif-for-Circulation/releases).
 - Go into the folder, edit `bootstrap.php` file, update:
     - Change `YOUR_SLiMS_DB_NAME` to your SLiMS database name.
